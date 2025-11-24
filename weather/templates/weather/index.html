@@ -1,0 +1,46 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Weather App</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body style="background-image: url('{{ bg_image }}');">
+    <div class="overlay">
+        <div class="container">
+            <h1>Weather App</h1>
+            <form method="get" class="search-form">
+                <input type="text" name="city" placeholder="Enter city" value="{{ weather.city|default:'' }}">
+                <button type="submit">Search</button>
+            </form>
+
+            {% if weather %}
+            <div class="weather-card">
+                <h2>{{ weather.city }}</h2>
+                <p class="temp">{{ weather.temp }}°C</p>
+                <p>{{ weather.description }}</p>
+                <p>Humidity: {{ weather.humidity }} | Wind: {{ weather.wind }} m/s</p>
+                <img src="http://openweathermap.org/img/wn/{{ weather.icon }}@2x.png" alt="icon">
+            </div>
+            {% elif error %}
+            <p class="error">{{ error }}</p>
+            {% endif %}
+
+            {% if forecast %}
+            <h3>5-Day Forecast</h3>
+            <div class="forecast">
+                {% for f in forecast %}
+                <div class="forecast-card">
+                    <p><strong>{{ f.day }}</strong></p>
+                    <img src="http://openweathermap.org/img/wn/{{ f.icon }}@2x.png" alt="icon">
+                    <p>{{ f.temp }}°C</p>
+                    <p>{{ f.description }}</p>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
