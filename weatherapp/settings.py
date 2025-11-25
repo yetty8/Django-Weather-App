@@ -1,11 +1,16 @@
 from pathlib import Path
+import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-xxxxxx'
-DEBUG = True
-ALLOWED_HOSTS = []
+# SECURITY
+SECRET_KEY = 'django-insecure-xxxxxx'  # keep secret in production!
+DEBUG = False  # turn off in production
 
+# Allow all hosts for now (replace with your domain later)
+ALLOWED_HOSTS = ['*']
+
+# Installed apps
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -46,6 +51,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'weatherapp.wsgi.application'
 
+# Database
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -53,12 +59,16 @@ DATABASES = {
     }
 }
 
+# Localization
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
+# Static files
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [BASE_DIR / 'static']
+STATICFILES_DIRS = [BASE_DIR / 'static']  # your local static folder
+STATIC_ROOT = BASE_DIR / 'staticfiles'    # folder for collectstatic (Render serves from here)
 
+# Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

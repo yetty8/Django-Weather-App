@@ -2,8 +2,8 @@ import requests
 from django.shortcuts import render
 import datetime
 
-WEATHER_API_KEY = "YOUR API KEY"
-UNSPLASH_ACCESS_KEY = "YOUR API KEY"  # SAFE ON BACKEND ONLY
+WEATHER_API_KEY = "5e1672ba9f277b3d1aca94d1b6908b59"
+UNSPLASH_ACCESS_KEY = "3pbWlS1ILdgA3ahMpryRtU1WWcGRVZKk-8vBs-9bpcU"  # SAFE ON BACKEND ONLY
 
 def get_city_image(city):
     url = "https://api.unsplash.com/search/photos"
