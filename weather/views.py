@@ -6,8 +6,8 @@ import datetime
 # ---------------------------------------------------------
 # API KEYS
 # ---------------------------------------------------------
-WEATHER_API_KEY = "dc9c04845685c5430c9b427ff0f56d46"
-UNSPLASH_ACCESS_KEY = "h78O9xPKywaee2cL-D1SZCp32gUFg0SFrtj9h7CpSvs"
+WEATHER_API_KEY = "YOUR_API_KEY"
+UNSPLASH_ACCESS_KEY = "YOUR_API_KEY"
 
 
 # ---------------------------------------------------------
