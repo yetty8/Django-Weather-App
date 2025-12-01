@@ -3,31 +3,32 @@ import requests
 from django.shortcuts import render
 import datetime
 
+# ---------------------------------------------------------
+# API KEYS
+# ---------------------------------------------------------
 WEATHER_API_KEY = "5e1672ba9f277b3d1aca94d1b6908b59"
-UNSPLASH_ACCESS_KEY = "ffF_zWgUljHDswOuRxzPGPaSlse-_1bYgS1MdR8Bvds"
+UNSPLASH_ACCESS_KEY = "ffoRcFkgG-cfIU1d1-wUppnRKkbNwL2WnBq2uHgZ1rA"
 
 
-# =============================================================
-# GET CITY IMAGE FROM UNSPLASH BASED ON WEATHER
-# =============================================================
+# ---------------------------------------------------------
+# FUNCTION: Unsplash background image
+# ---------------------------------------------------------
 def get_city_image(city, weather_description):
     desc = (weather_description or "").lower()
 
-    # Map weather description to Unsplash query
+    # Match weather to image search terms
     if "rain" in desc:
-        query = f"{city} rainy city skyline"
+        query = f"{city} rainy skyline"
     elif "snow" in desc:
         query = f"{city} snowy skyline"
     elif "cloud" in desc:
         query = f"{city} cloudy skyline"
     elif "clear" in desc or "sunny" in desc:
         query = f"{city} sunny skyline"
-    elif "thunder" in desc or "storm" in desc:
+    elif "storm" in desc or "thunder" in desc:
         query = f"{city} thunderstorm skyline"
-    elif "fog" in desc or "mist" in desc or "haze" in desc:
+    elif "fog" in desc or "mist" in desc:
         query = f"{city} foggy skyline"
-    elif "wind" in desc:
-        query = f"{city} windy skyline"
     else:
         query = f"{city} skyline"
 
@@ -40,115 +41,137 @@ def get_city_image(city, weather_description):
     }
 
     try:
-        response = requests.get(url, params=params, timeout=8)
-        data = response.json()
+        response = requests.get(url, params=params, timeout=8).json()
+        results = response.get("results", [])
+        if results:
+            return results[0]["urls"]["regular"]
 
-        if "results" in data and len(data["results"]) > 0:
-            return data["results"][0]["urls"]["regular"]
-
-        # Fallback to city skyline
+        # fallback to generic skyline
         params["query"] = f"{city} skyline"
         fallback = requests.get(url, params=params, timeout=8).json()
-        if "results" in fallback and len(fallback["results"]) > 0:
+        if fallback.get("results"):
             return fallback["results"][0]["urls"]["regular"]
 
-        # Default image if nothing found
         return "/static/images/default.jpg"
 
     except Exception:
         return "/static/images/default.jpg"
 
 
-# =============================================================
+# ---------------------------------------------------------
 # MAIN VIEW
-# =============================================================
+# ---------------------------------------------------------
 def index(request):
     city = request.GET.get("city", "Toronto").strip() or "Toronto"
 
-    # -----------------------------
-    # 1. GET CURRENT WEATHER
-    # -----------------------------
+    # ---------------------------
+    # 1. Current Weather
+    # ---------------------------
     weather_url = (
-        f"https://api.openweathermap.org/data/2.5/weather?"
-        f"q={city}&appid={WEATHER_API_KEY}&units=metric"
+        f"https://api.openweathermap.org/data/2.5/weather"
+        f"?q={city}&appid={WEATHER_API_KEY}&units=metric"
     )
 
     try:
         r = requests.get(weather_url, timeout=8)
         r.raise_for_status()
-        rjson = r.json()
-    except Exception:
+        data = r.json()
+    except:
         return render(request, "weather/index.html", {
-            "error": "Unable to contact weather service. Try again."
+            "error": "Unable to contact weather service."
         })
 
-    if str(rjson.get("cod")) != "200":
+    if str(data.get("cod")) != "200":
         return render(request, "weather/index.html", {
-            "error": rjson.get("message", "City not found.")
+            "error": data.get("message", "City not found.")
         })
 
-    main = rjson.get("main", {})
-    weather_w = rjson.get("weather", [{}])[0]
-    wind = rjson.get("wind", {})
-    coord = rjson.get("coord", {})
+    main = data.get("main", {})
+    w = data.get("weather", [{}])[0]
+    wind = data.get("wind", {})
+    sys = data.get("sys", {})
+    coord = data.get("coord", {})
 
-    # Calculate local time
-    timezone_offset = rjson.get("timezone", 0)
-    utc_now = datetime.datetime.utcnow()
-    local_time = utc_now + datetime.timedelta(seconds=timezone_offset)
-    formatted_time = local_time.strftime("%Y-%m-%d %I:%M %p")
+    # Local Time
+    offset = data.get("timezone", 0)
+    now_utc = datetime.datetime.utcnow()
+    local_time = now_utc + datetime.timedelta(seconds=offset)
+
+    # Sunrise / Sunset
+    sunrise = datetime.datetime.utcfromtimestamp(sys.get("sunrise") + offset).strftime("%I:%M %p")
+    sunset = datetime.datetime.utcfromtimestamp(sys.get("sunset") + offset).strftime("%I:%M %p")
+
+    # Visibility (meters → km)
+    visibility_km = round(data.get("visibility", 0)/1000, 1)
 
     weather = {
-        "city": rjson.get("name", city),
+        "city": data.get("name", city),
+        "country": sys.get("country"),
         "temp": main.get("temp"),
-        "description": weather_w.get("description"),
+        "feels_like": main.get("feels_like"),
         "humidity": main.get("humidity"),
+        "pressure": main.get("pressure"),
+        "visibility": visibility_km,
+        "description": w.get("description"),
         "wind": wind.get("speed"),
-        "icon": weather_w.get("icon"),
-        "local_time": formatted_time,
+        "icon": w.get("icon") or "01d",
+        "local_time": local_time.strftime("%Y-%m-%d %I:%M %p"),
+        "sunrise": sunrise,
+        "sunset": sunset,
         "lat": coord.get("lat"),
         "lon": coord.get("lon"),
     }
 
-    # -----------------------------
-    # 2. GET 5-DAY FORECAST
-    # -----------------------------
+    # ---------------------------
+    # 2. Forecast
+    # ---------------------------
     forecast_url = (
-        f"https://api.openweathermap.org/data/2.5/forecast?"
-        f"q={city}&appid={WEATHER_API_KEY}&units=metric"
+        f"https://api.openweathermap.org/data/2.5/forecast"
+        f"?q={city}&appid={WEATHER_API_KEY}&units=metric"
     )
 
     forecast_list = []
-    try:
-        fr = requests.get(forecast_url, timeout=8)
-        fr.raise_for_status()
-        frjson = fr.json()
+    hourly_list = []
 
-        if str(frjson.get("cod")) == "200":
-            entries = frjson.get("list", [])
-            # Take every 8th entry (~once per day)
+    try:
+        fr = requests.get(forecast_url, timeout=8).json()
+        if str(fr.get("cod")) == "200":
+            entries = fr.get("list", [])
+
+            # DAILY FORECAST (every 8th entry)
             for i in range(0, min(40, len(entries)), 8):
                 item = entries[i]
                 day = datetime.datetime.fromtimestamp(item["dt"]).strftime("%A")
                 forecast_list.append({
                     "day": day,
-                    "temp": item["main"].get("temp"),
+                    "temp": item["main"]["temp"],
                     "description": item["weather"][0].get("description"),
-                    "icon": item["weather"][0].get("icon"),
+                    "icon": item["weather"][0].get("icon") or "01d",
                 })
-    except Exception:
-        forecast_list = []
 
-    # -----------------------------
-    # 3. GET BACKGROUND IMAGE
-    # -----------------------------
+            # HOURLY FORECAST (next 12 hours)
+            for h in entries[:6]:  # 6 entries ≈ 18 hours
+                hourly_list.append({
+                    "time": datetime.datetime.fromtimestamp(h["dt"]).strftime("%I %p"),
+                    "temp": h["main"]["temp"],
+                    "icon": h["weather"][0].get("icon") or "01d",
+                })
+
+    except:
+        forecast_list = []
+        hourly_list = []
+
+    # ---------------------------
+    # 3. Background Image
+    # ---------------------------
     bg_image = get_city_image(city, weather["description"])
 
-    # -----------------------------
-    # 4. RENDER TEMPLATE
-    # -----------------------------
+    # ---------------------------
+    # 4. Render
+    # ---------------------------
     return render(request, "weather/index.html", {
         "weather": weather,
         "forecast": forecast_list,
+        "hourly": hourly_list,
         "bg_image": bg_image,
     })

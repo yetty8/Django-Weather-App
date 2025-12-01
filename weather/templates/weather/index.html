@@ -7,7 +7,8 @@
 
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
@@ -20,7 +21,7 @@
 
         <h1 class="title">🌤️ Global Weather Network</h1>
 
-        <form method="get" class="search-form">
+        <form method="get" class="search-form" onsubmit="localStorage.setItem('lastCity', document.querySelector('[name=city]').value)">
             <input type="text" name="city" placeholder="Search for a city..." 
                    value="{{ weather.city|default:'' }}">
             <button type="submit">Search</button>
@@ -28,22 +29,48 @@
 
         {% if weather %}
         <div class="weather-card animated-slide">
-            <h2 class="city">{{ weather.city }}</h2>
+            <h2 class="city">
+                {{ weather.city }}
+                {% if weather.country %}
+                <img src="https://flagsapi.com/{{ weather.country }}/flat/32.png" 
+                     style="vertical-align: middle; margin-left: 6px; border-radius: 4px;">
+                {% endif %}
+            </h2>
+
             <p class="local-time">🕒 {{ weather.local_time }}</p>
             <p class="temp" id="tempValue">{{ weather.temp }}°C</p>
             <button id="toggleTemp" class="toggle-btn">Switch to °F</button>
             <p class="description">{{ weather.description }}</p>
-            <p class="details">
-                💧 Humidity: <strong>{{ weather.humidity }}</strong>  
-                | 🌬️ Wind: <strong>{{ weather.wind }} m/s</strong>
+
+            <p>
+                🌡️ Feels Like: <strong>{{ weather.feels_like }}°C</strong> |
+                🌅 Sunrise: <strong>{{ weather.sunrise }}</strong> |
+                🌇 Sunset: <strong>{{ weather.sunset }}</strong>
             </p>
-            <img class="weather-icon"
-                 src="http://openweathermap.org/img/wn/{{ weather.icon }}@2x.png">
+            <p class="details">
+                💧 Humidity: <strong>{{ weather.humidity }}</strong> |
+                🌬️ Wind: <strong>{{ weather.wind }} m/s</strong> |
+                📏 Visibility: <strong>{{ weather.visibility }} km</strong> |
+                🔽 Pressure: <strong>{{ weather.pressure }} hPa</strong>
+            </p>
+
+            <img class="weather-icon" 
+                 src="https://openweathermap.org/img/wn/{{ weather.icon }}@2x.png" 
+                 alt="icon" style="margin-top:12px;">
         </div>
         {% endif %}
 
-        {% if error %}
-        <p class="error">{{ error }}</p>
+        {% if hourly %}
+        <h3 class="section-title">⏱️ Hourly Forecast</h3>
+        <div class="forecast hourly-scroll">
+            {% for h in hourly %}
+            <div class="forecast-card animated-zoom">
+                <p class="forecast-day">{{ h.time }}</p>
+                <img src="https://openweathermap.org/img/wn/{{ h.icon }}@2x.png" alt="icon" style="margin-top:8px;">
+                <p class="forecast-temp">{{ h.temp }}°C</p>
+            </div>
+            {% endfor %}
+        </div>
         {% endif %}
 
         {% if forecast %}
@@ -52,7 +79,7 @@
             {% for f in forecast %}
             <div class="forecast-card animated-zoom">
                 <p class="forecast-day">{{ f.day }}</p>
-                <img src="http://openweathermap.org/img/wn/{{ f.icon }}@2x.png">
+                <img src="https://openweathermap.org/img/wn/{{ f.icon }}@2x.png" alt="icon">
                 <p class="forecast-temp">{{ f.temp }}°C</p>
                 <p class="forecast-desc">{{ f.description }}</p>
             </div>
@@ -76,26 +103,46 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+    // Temperature toggle
     const tempElement = document.getElementById("tempValue");
     const toggleButton = document.getElementById("toggleTemp");
-    if (!tempElement) return;
+    if (tempElement && toggleButton) {
+        let celsius = parseFloat(tempElement.innerText);
+        let isCelsius = true;
+        toggleButton.addEventListener("click", function () {
+            if (isCelsius) {
+                let fahrenheit = (celsius * 9 / 5) + 32;
+                tempElement.innerText = fahrenheit.toFixed(1) + "°F";
+                toggleButton.innerText = "Switch to °C";
+            } else {
+                tempElement.innerText = celsius + "°C";
+                toggleButton.innerText = "Switch to °F";
+            }
+            isCelsius = !isCelsius;
+        });
+    }
 
-    let celsius = parseFloat(tempElement.innerText);
-    let isCelsius = true;
+    // Auto-fill last searched city
+    const lastCity = localStorage.getItem('lastCity');
+    if (lastCity) {
+        const input = document.querySelector('[name=city]');
+        if (input) input.value = lastCity;
+    }
 
-    toggleButton.addEventListener("click", function () {
-        if (isCelsius) {
-            let fahrenheit = (celsius * 9 / 5) + 32;
-            tempElement.innerText = fahrenheit.toFixed(1) + "°F";
-            toggleButton.innerText = "Switch to °C";
-        } else {
-            tempElement.innerText = celsius + "°C";
-            toggleButton.innerText = "Switch to °F";
-        }
-        isCelsius = !isCelsius;
+    // Enter key triggers search
+    const form = document.querySelector('.search-form');
+    form.addEventListener("keypress", function(e){
+        if(e.key === "Enter") form.submit();
     });
 });
 </script>
+<!-- Footer -->
+<footer style="text-align: center; padding: 20px 0; margin-top: 40px; 
+               color: #f0f0f0; font-family: 'Inter', sans-serif; font-size: 14px; 
+               background: rgba(0, 0, 0, 0.7); border-top: 1px solid rgba(255,255,255,0.3); 
+               border-radius: 8px;">
+    🌐 Global Weather Network &mdash; thoughtfully designed and built by <strong>Yetbarek Temesgen</strong> © {{ now|date:"Y" }}.
+</footer>
 
 </body>
 </html>
