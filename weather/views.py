@@ -1,22 +1,30 @@
-# weather/views.py
 import requests
-from django.shortcuts import render
 import datetime
+import logging
+from django.shortcuts import render
+from django.conf import settings
+from django.http import JsonResponse
 
-# ---------------------------------------------------------
+# ---------------------------
+# LOGGER
+# ---------------------------
+logger = logging.getLogger(__name__)
+
+# ---------------------------
 # API KEYS
-# ---------------------------------------------------------
-WEATHER_API_KEY = "YOUR_API_KEY"
-UNSPLASH_ACCESS_KEY = "YOUR_API_KEY"
+# ---------------------------
+WEATHER_API_KEY = settings.WEATHER_API_KEY
+UNSPLASH_ACCESS_KEY = settings.UNSPLASH_ACCESS_KEY
 
+# Debug: log if keys are loaded
+logger.warning("WEATHER_API_KEY loaded: %s", bool(WEATHER_API_KEY))
+logger.warning("UNSPLASH_ACCESS_KEY loaded: %s", bool(UNSPLASH_ACCESS_KEY))
 
-# ---------------------------------------------------------
-# FUNCTION: Unsplash background image
-# ---------------------------------------------------------
+# ---------------------------
+# Unsplash image function
+# ---------------------------
 def get_city_image(city, weather_description):
     desc = (weather_description or "").lower()
-
-    # Match weather to image search terms
     if "rain" in desc:
         query = f"{city} rainy skyline"
     elif "snow" in desc:
@@ -46,7 +54,7 @@ def get_city_image(city, weather_description):
         if results:
             return results[0]["urls"]["regular"]
 
-        # fallback to generic skyline
+        # fallback
         params["query"] = f"{city} skyline"
         fallback = requests.get(url, params=params, timeout=8).json()
         if fallback.get("results"):
@@ -54,37 +62,28 @@ def get_city_image(city, weather_description):
 
         return "/static/images/default.jpg"
 
-    except Exception:
+    except Exception as e:
+        logger.error("Unsplash API failed: %s", e)
         return "/static/images/default.jpg"
 
-
-# ---------------------------------------------------------
-# MAIN VIEW
-# ---------------------------------------------------------
+# ---------------------------
+# Main view
+# ---------------------------
 def index(request):
     city = request.GET.get("city", "Toronto").strip() or "Toronto"
 
-    # ---------------------------
-    # 1. Current Weather
-    # ---------------------------
-    weather_url = (
-        f"https://api.openweathermap.org/data/2.5/weather"
-        f"?q={city}&appid={WEATHER_API_KEY}&units=metric"
-    )
-
+    # Weather
+    weather_url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
     try:
         r = requests.get(weather_url, timeout=8)
         r.raise_for_status()
         data = r.json()
-    except:
-        return render(request, "weather/index.html", {
-            "error": "Unable to contact weather service."
-        })
+    except Exception as e:
+        logger.error("Weather API call failed: %s", e)
+        return render(request, "weather/index.html", {"error": "Unable to contact weather service."})
 
     if str(data.get("cod")) != "200":
-        return render(request, "weather/index.html", {
-            "error": data.get("message", "City not found.")
-        })
+        return render(request, "weather/index.html", {"error": data.get("message", "City not found.")})
 
     main = data.get("main", {})
     w = data.get("weather", [{}])[0]
@@ -92,16 +91,13 @@ def index(request):
     sys = data.get("sys", {})
     coord = data.get("coord", {})
 
-    # Local Time
     offset = data.get("timezone", 0)
     now_utc = datetime.datetime.utcnow()
     local_time = now_utc + datetime.timedelta(seconds=offset)
 
-    # Sunrise / Sunset
     sunrise = datetime.datetime.utcfromtimestamp(sys.get("sunrise") + offset).strftime("%I:%M %p")
     sunset = datetime.datetime.utcfromtimestamp(sys.get("sunset") + offset).strftime("%I:%M %p")
 
-    # Visibility (meters → km)
     visibility_km = round(data.get("visibility", 0)/1000, 1)
 
     weather = {
@@ -122,23 +118,14 @@ def index(request):
         "lon": coord.get("lon"),
     }
 
-    # ---------------------------
-    # 2. Forecast
-    # ---------------------------
-    forecast_url = (
-        f"https://api.openweathermap.org/data/2.5/forecast"
-        f"?q={city}&appid={WEATHER_API_KEY}&units=metric"
-    )
-
-    forecast_list = []
-    hourly_list = []
+    # Forecast
+    forecast_url = f"https://api.openweathermap.org/data/2.5/forecast?q={city}&appid={WEATHER_API_KEY}&units=metric"
+    forecast_list, hourly_list = [], []
 
     try:
         fr = requests.get(forecast_url, timeout=8).json()
         if str(fr.get("cod")) == "200":
             entries = fr.get("list", [])
-
-            # DAILY FORECAST (every 8th entry)
             for i in range(0, min(40, len(entries)), 8):
                 item = entries[i]
                 day = datetime.datetime.fromtimestamp(item["dt"]).strftime("%A")
@@ -148,30 +135,30 @@ def index(request):
                     "description": item["weather"][0].get("description"),
                     "icon": item["weather"][0].get("icon") or "01d",
                 })
-
-            # HOURLY FORECAST (next 12 hours)
-            for h in entries[:6]:  # 6 entries ≈ 18 hours
+            for h in entries[:6]:
                 hourly_list.append({
                     "time": datetime.datetime.fromtimestamp(h["dt"]).strftime("%I %p"),
                     "temp": h["main"]["temp"],
                     "icon": h["weather"][0].get("icon") or "01d",
                 })
+    except Exception as e:
+        logger.error("Forecast API call failed: %s", e)
 
-    except:
-        forecast_list = []
-        hourly_list = []
-
-    # ---------------------------
-    # 3. Background Image
-    # ---------------------------
+    # Background image
     bg_image = get_city_image(city, weather["description"])
 
-    # ---------------------------
-    # 4. Render
-    # ---------------------------
     return render(request, "weather/index.html", {
         "weather": weather,
         "forecast": forecast_list,
         "hourly": hourly_list,
         "bg_image": bg_image,
+    })
+
+# ---------------------------
+# Debug endpoint (temporary)
+# ---------------------------
+def debug_keys(request):
+    return JsonResponse({
+        "WEATHER_API_KEY_loaded": bool(WEATHER_API_KEY),
+        "UNSPLASH_ACCESS_KEY_loaded": bool(UNSPLASH_ACCESS_KEY),
     })
