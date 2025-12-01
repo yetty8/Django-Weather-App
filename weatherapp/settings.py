@@ -4,15 +4,30 @@ import os
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ---------------------------
+# DEBUG / ENV
+# ---------------------------
+DEBUG = os.getenv("DEBUG", "False") == "True"
+
+# ---------------------------
+# API KEYS (from environment variables)
+# ---------------------------
+WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
+UNSPLASH_ACCESS_KEY = os.getenv("UNSPLASH_ACCESS_KEY")
+
+if not WEATHER_API_KEY or not UNSPLASH_ACCESS_KEY:
+    # Warning instead of exit to allow local dev
+    print("WARNING: Missing WEATHER_API_KEY or UNSPLASH_ACCESS_KEY environment variables!")
+    WEATHER_API_KEY = WEATHER_API_KEY or "dummy_weather_key"
+    UNSPLASH_ACCESS_KEY = UNSPLASH_ACCESS_KEY or "dummy_unsplash_key"
+
+# ---------------------------
 # SECURITY
 # ---------------------------
-SECRET_KEY = 'django-insecure-xxxxxx'   # Replace in production!
-DEBUG = False                           # OFF in production
-ALLOWED_HOSTS = ['*']                   # Replace with your Railway domain if you have it
-
+SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-placeholder")
+ALLOWED_HOSTS = ["*"]
 
 # ---------------------------
-# APPLICATIONS
+# INSTALLED APPS
 # ---------------------------
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -21,21 +36,15 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
-    # Your App
     'weather',
 ]
-
 
 # ---------------------------
 # MIDDLEWARE
 # ---------------------------
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-
-    # WhiteNoise for static files
     'whitenoise.middleware.WhiteNoiseMiddleware',
-
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -44,13 +53,11 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-
 # ---------------------------
-# URLS + WSGI
+# URL + WSGI
 # ---------------------------
 ROOT_URLCONF = 'weatherapp.urls'
 WSGI_APPLICATION = 'weatherapp.wsgi.application'
-
 
 # ---------------------------
 # TEMPLATES
@@ -71,7 +78,6 @@ TEMPLATES = [
     },
 ]
 
-
 # ---------------------------
 # DATABASE
 # ---------------------------
@@ -82,34 +88,23 @@ DATABASES = {
     }
 }
 
-
 # ---------------------------
-# LOCALIZATION / TIMEZONE
+# LOCALIZATION
 # ---------------------------
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-
 # ---------------------------
 # STATIC FILES
 # ---------------------------
 STATIC_URL = '/static/'
-
-# Local static files
-STATICFILES_DIRS = [
-    BASE_DIR / 'static',
-]
-
-# Collected static files for deployment
+STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-
-# WhiteNoise for static file serving
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-
 # ---------------------------
-# DEFAULT AUTO FIELD
+# AUTO FIELD
 # ---------------------------
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
