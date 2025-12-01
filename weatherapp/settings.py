@@ -7,8 +7,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY
 # ---------------------------
 SECRET_KEY = 'django-insecure-xxxxxx'   # Replace in production!
-DEBUG = False                           # Turn ON locally, OFF in production
-ALLOWED_HOSTS = ['*']                   # Add your domain when you have one
+DEBUG = False                           # OFF in production
+ALLOWED_HOSTS = ['*']                   # Replace with your Railway domain if you have it
 
 
 # ---------------------------
@@ -33,7 +33,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
 
-    # WhiteNoise for static file serving
+    # WhiteNoise for static files
     'whitenoise.middleware.WhiteNoiseMiddleware',
 
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -58,10 +58,7 @@ WSGI_APPLICATION = 'weatherapp.wsgi.application'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-
-        # Main templates folder
         'DIRS': [BASE_DIR / 'templates'],
-
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -100,19 +97,19 @@ USE_TZ = True
 # ---------------------------
 STATIC_URL = '/static/'
 
-# Folder where your local static files are stored
+# Local static files
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 
-# Folder where Django collects static files for deployment
+# Collected static files for deployment
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# Enable WhiteNoise compressed/static file storage
+# WhiteNoise for static file serving
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 
 # ---------------------------
-# AUTO FIELD
+# DEFAULT AUTO FIELD
 # ---------------------------
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
